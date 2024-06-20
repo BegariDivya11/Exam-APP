@@ -1,0 +1,412 @@
+package internship;
+import javax.swing.*;
+import java.awt.*;
+import java.util.*;
+import java.util.List;
+import java.util.Timer;
+import javax.swing.border.EmptyBorder;
+
+public class ExamApp {
+    private JFrame frame;
+    private CardLayout cardLayout;
+    private JPanel mainPanel;
+
+    private LoginHandler loginHandler;
+    private SessionManager sessionManager;
+    private ProfileHandler profileHandler;
+    private MCQHandler mcqHandler;
+    private String sessionId;
+    private User currentUser;
+
+    public ExamApp() {
+        loginHandler = new LoginHandler();
+        sessionManager = new SessionManager();
+        profileHandler = new ProfileHandler();
+        mcqHandler = new MCQHandler();
+
+        frame = new JFrame("Exam Application");
+        cardLayout = new CardLayout();
+        mainPanel = new JPanel(cardLayout);
+
+        mainPanel.add(createLoginPanel(), "Login");
+        mainPanel.add(createProfilePanel(), "Profile");
+        mainPanel.add(createMCQPanel(), "MCQ");
+
+        frame.add(mainPanel);
+        frame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
+        frame.setSize(600, 400); // Adjusted frame size for better UI
+        frame.setVisible(true);
+    }
+
+    private JPanel createLoginPanel() {
+        JPanel panel = new JPanel(new BorderLayout(10, 10));
+        panel.setBorder(new EmptyBorder(50, 50, 50, 50));
+        panel.setBackground(new Color(60, 179, 113));
+
+        JLabel titleLabel = new JLabel("Login", SwingConstants.CENTER);
+        titleLabel.setFont(new Font("Arial", Font.BOLD, 32));
+        titleLabel.setForeground(Color.WHITE);
+
+        JPanel formPanel = new JPanel(new GridLayout(3, 1, 10, 10));
+        formPanel.setBackground(new Color(245, 245, 245));
+
+        JLabel usernameLabel = new JLabel("Username:");
+        JTextField usernameField = new JTextField();
+        JLabel passwordLabel = new JLabel("Password:");
+        JPasswordField passwordField = new JPasswordField();
+        JButton loginButton = new JButton("Login");
+        loginButton.setFont(new Font("Arial", Font.BOLD, 32));
+        loginButton.setForeground(Color.WHITE);
+        loginButton.setBackground(new Color(30, 144, 255));
+
+        // Styling input fields and labels
+        Dimension fieldSize = new Dimension(200, 30);
+        usernameField.setPreferredSize(fieldSize);
+        passwordField.setPreferredSize(fieldSize);
+
+        usernameLabel.setFont(new Font("Arial", Font.PLAIN, 16));
+        passwordLabel.setFont(new Font("Arial", Font.PLAIN, 16));
+
+        // Arranging components in the form panel
+        formPanel.add(usernameLabel);
+        formPanel.add(usernameField);
+        formPanel.add(passwordLabel);
+        formPanel.add(passwordField);
+        formPanel.add(new JLabel()); // Empty cell for spacing
+        formPanel.add(loginButton);
+
+        panel.add(titleLabel, BorderLayout.NORTH);
+        panel.add(formPanel, BorderLayout.CENTER);
+
+        loginButton.addActionListener(e -> {
+            String username = usernameField.getText();
+            String password = new String(passwordField.getPassword());
+
+            if (loginHandler.validateCredentials(username, password)) {
+                currentUser = new User(username, password);
+                sessionId = UUID.randomUUID().toString();
+                sessionManager.loginUser(sessionId, currentUser);
+
+                JOptionPane.showMessageDialog(frame, "Login successful!");
+                cardLayout.show(mainPanel, "Profile");
+            } else {
+                JOptionPane.showMessageDialog(frame, "Invalid credentials!", "Error", JOptionPane.ERROR_MESSAGE);
+            }
+        });
+
+        return panel;
+    }
+
+    private JPanel createProfilePanel() {
+        JPanel panel = new JPanel(new BorderLayout(10, 10));
+        panel.setBorder(new EmptyBorder(20, 20, 20, 20));
+        panel.setBackground(new Color(70, 130, 180));
+
+        JLabel profileTitle = new JLabel("Profile Management", SwingConstants.CENTER);
+        profileTitle.setFont(new Font("Arial", Font.BOLD, 32));
+        profileTitle.setForeground(Color.WHITE);
+
+        JPanel formPanel = new JPanel(new GridLayout(3, 2, 10, 10));
+        formPanel.setBackground(new Color(245, 245, 245));
+
+        JLabel profileLabel = new JLabel("New Profile Info:");
+        JTextField profileField = new JTextField();
+        JLabel passwordLabel = new JLabel("New Password:");
+        JPasswordField passwordField = new JPasswordField();
+        JButton updateProfileButton = new JButton("Update Profile");
+        updateProfileButton.setBackground(new Color(30, 144, 255));
+        updateProfileButton.setForeground(Color.WHITE);
+        JButton updatePasswordButton = new JButton("Update Password");
+        updatePasswordButton.setBackground(new Color(30, 144, 255));
+        updatePasswordButton.setForeground(Color.WHITE);
+
+        profileLabel.setFont(new Font("Arial", Font.PLAIN, 16));
+        passwordLabel.setFont(new Font("Arial", Font.PLAIN, 16));
+
+        formPanel.add(profileLabel);
+        formPanel.add(profileField);
+        formPanel.add(passwordLabel);
+        formPanel.add(passwordField);
+        formPanel.add(updateProfileButton);
+        formPanel.add(updatePasswordButton);
+
+        JButton startExamButton = new JButton("Start Exam");
+        startExamButton.setPreferredSize(new Dimension(150, 30));
+        startExamButton.setBackground(new Color(0, 128, 0));
+        startExamButton.setForeground(Color.WHITE);
+        JPanel buttonPanel = new JPanel(new FlowLayout(FlowLayout.CENTER));
+        buttonPanel.add(startExamButton);
+        buttonPanel.setBackground(new Color(245, 245, 245));
+
+        panel.add(profileTitle, BorderLayout.NORTH);
+        panel.add(formPanel, BorderLayout.CENTER);
+        panel.add(buttonPanel, BorderLayout.SOUTH);
+
+        updateProfileButton.addActionListener(e -> {
+            String newProfileInfo = profileField.getText();
+            profileHandler.updateProfile(currentUser, newProfileInfo);
+            JOptionPane.showMessageDialog(frame, "Profile updated!");
+        });
+
+        updatePasswordButton.addActionListener(e -> {
+            String newPassword = new String(passwordField.getPassword());
+            profileHandler.updatePassword(currentUser, newPassword);
+            JOptionPane.showMessageDialog(frame, "Password updated!");
+        });
+
+        startExamButton.addActionListener(e -> cardLayout.show(mainPanel, "MCQ"));
+
+        return panel;
+    }
+
+    private JPanel createMCQPanel() {
+        JPanel panel = new JPanel(new BorderLayout(10, 10));
+        panel.setBackground(new Color(100, 149, 237));
+
+        JPanel questionPanel = new JPanel();
+        questionPanel.setLayout(new BoxLayout(questionPanel, BoxLayout.Y_AXIS));
+        JScrollPane scrollPane = new JScrollPane(questionPanel);
+        scrollPane.setPreferredSize(new Dimension(580, 300));
+        scrollPane.setBorder(new EmptyBorder(10, 10, 10, 10));
+
+        JButton submitButton = new JButton("Submit");
+        submitButton.setBackground(new Color(220, 20, 60));
+        submitButton.setForeground(Color.WHITE);
+        submitButton.setFont(new Font("Arial", Font.BOLD, 16));
+
+        List<Question> questions = Arrays.asList(
+                new Question("Who is the main protagonist in 'The Lord of the Rings'?", Arrays.asList("Frodo Baggins", "Harry Potter", "Tony Stark")),
+                new Question("How many 'Star Wars' movies have there been in total?", Arrays.asList("6", "10", "11"))
+        );
+
+        ButtonGroup[] buttonGroups = new ButtonGroup[questions.size()];
+        for (int i = 0; i < questions.size(); i++) {
+            Question question = questions.get(i);
+
+            JLabel questionLabel = new JLabel(question.getQuestion());
+            questionLabel.setFont(new Font("Arial", Font.PLAIN, 16));
+            questionLabel.setBorder(new EmptyBorder(10, 0, 10, 0));
+            questionPanel.add(questionLabel);
+
+            ButtonGroup group = new ButtonGroup();
+            buttonGroups[i] = group;
+
+            for (String option : question.getOptions()) {
+                JRadioButton radioButton = new JRadioButton(option);
+                radioButton.setActionCommand(option);
+                radioButton.setBackground(new Color(245, 245, 245));
+                radioButton.setFont(new Font("Arial", Font.PLAIN, 14));
+                group.add(radioButton);
+                questionPanel.add(radioButton);
+            }
+
+            questionPanel.add(Box.createVerticalStrut(10));
+        }
+
+        panel.add(scrollPane, BorderLayout.CENTER);
+        panel.add(submitButton, BorderLayout.SOUTH);
+
+        submitButton.addActionListener(e -> {
+            List<String> answers = new ArrayList<>();
+            for (ButtonGroup group : buttonGroups) {
+                ButtonModel selectedModel = group.getSelection();
+                if (selectedModel != null) {
+                    answers.add(selectedModel.getActionCommand());
+                } else {
+                    answers.add("");
+                }
+            }
+            mcqHandler.submitAnswers(answers);
+            JOptionPane.showMessageDialog(frame, "Answers submitted!");
+            cardLayout.show(mainPanel, "End");
+            mainPanel.add(createEndPanel(), "End");
+        });
+
+        // Timer and auto submit
+        ExamTimer examTimer = new ExamTimer(60000, () -> {
+            List<String> answers = new ArrayList<>();
+            for (ButtonGroup group : buttonGroups) {
+                ButtonModel selectedModel = group.getSelection();
+                if (selectedModel != null) {
+                    answers.add(selectedModel.getActionCommand());
+                } else {
+                    answers.add("");
+                }
+            }
+            mcqHandler.submitAnswers(answers);
+            JOptionPane.showMessageDialog(frame, "Time up! Answers submitted automatically.");
+            showEndPanel();
+        });
+        examTimer.start();
+
+        return panel;
+    }
+
+    private void showEndPanel() {
+        cardLayout.show(mainPanel, "End");
+    }
+
+    private JPanel createEndPanel() {
+        JPanel panel = new JPanel(new BorderLayout());
+        panel.setBackground(new Color(0, 128, 0));
+
+        JLabel endLabel = new JLabel("The test has ended. Thank you!", SwingConstants.CENTER);
+        endLabel.setFont(new Font("Arial", Font.BOLD, 32));
+        endLabel.setForeground(Color.WHITE);
+        panel.add(endLabel, BorderLayout.CENTER);
+
+        JButton backButton = new JButton("Back to Profile");
+        backButton.setBackground(new Color(30, 144, 255));
+        backButton.setForeground(Color.WHITE);
+        backButton.setFont(new Font("Arial", Font.BOLD, 16));
+        backButton.addActionListener(e -> cardLayout.show(mainPanel, "Profile"));
+        panel.add(backButton, BorderLayout.SOUTH);
+
+        return panel;
+    }
+
+    // Helper class to store question data
+    private static class Question {
+        private final String question;
+        private final List<String> options;
+
+        public Question(String question, List<String> options) {
+            this.question = question;
+            this.options = options;
+        }
+
+        public String getQuestion() {
+            return question;
+        }
+
+        public List<String> getOptions() {
+            return options;
+        }
+    }
+
+    public static void main(String[] args) {
+        SwingUtilities.invokeLater(ExamApp::new);
+    }
+
+    // User class
+    public static class User {
+        private String username;
+        private String password;
+        private String profileInfo;
+
+        public User(String username, String password) {
+            this.username = username;
+            this.password = password;
+        }
+
+        public String getUsername() {
+            return username;
+        }
+
+        public void setUsername(String username) {
+            this.username = username;
+        }
+
+        public String getPassword() {
+            return password;
+        }
+
+        public void setPassword(String password) {
+            this.password = password;
+        }
+
+        public String getProfileInfo() {
+            return profileInfo;
+        }
+
+        public void setProfileInfo(String profileInfo) {
+            this.profileInfo = profileInfo;
+        }
+    }
+
+    // SessionManager class
+    public static class SessionManager {
+        private final Map<String, User> sessions = Collections.synchronizedMap(new HashMap<>());
+
+        public void loginUser(String sessionId, User user) {
+            sessions.put(sessionId, user);
+        }
+
+        public void logoutUser(String sessionId) {
+            sessions.remove(sessionId);
+        }
+
+        public User getUser(String sessionId) {
+            return sessions.get(sessionId);
+        }
+    }
+
+    // LoginHandler class
+    public static class LoginHandler {
+        private final Map<String, String> userDatabase = new HashMap<>();
+
+        public LoginHandler() {
+            // Example users
+            userDatabase.put("user1", "password1");
+            userDatabase.put("user2", "password2");
+        }
+
+        public boolean validateCredentials(String username, String password) {
+            return userDatabase.containsKey(username) && userDatabase.get(username).equals(password);
+        }
+    }
+
+    // ProfileHandler class
+    public static class ProfileHandler {
+        public void updateProfile(User user, String newProfileInfo) {
+            user.setProfileInfo(newProfileInfo);
+        }
+
+        public void updatePassword(User user, String newPassword) {
+            user.setPassword(newPassword);
+        }
+    }
+
+    // MCQHandler class
+    public static class MCQHandler {
+        public void displayQuestions(List<String> questions) {
+            for (String question : questions) {
+                System.out.println(question);
+            }
+        }
+
+        public void submitAnswers(List<String> answers) {
+            // Handle answer submission
+            System.out.println("Answers submitted: " + answers);
+        }
+    }
+
+    // ExamTimer class
+    public static class ExamTimer {
+        private final Timer timer;
+        private long remainingTime;
+        private final Runnable onTimeUp;
+
+        public ExamTimer(long duration, Runnable onTimeUp) {
+            this.remainingTime = duration;
+            this.onTimeUp = onTimeUp;
+            this.timer = new Timer();
+        }
+
+        public void start() {
+            timer.schedule(new TimerTask() {
+                @Override
+                public void run() {
+                    if (remainingTime > 0) {
+                        remainingTime -= 1000;
+                        System.out.println("Remaining time: " + remainingTime / 1000 + " seconds");
+                    } else {
+                        onTimeUp.run();
+                        timer.cancel();
+                    }
+                }
+            }, 0, 1000);
+        }
+    }
+}
+
